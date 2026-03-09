@@ -1,0 +1,131 @@
+.cim-parent-info {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  background: #f0f6ff;
+  border: 1px solid #cce0f5;
+  border-radius: 4px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.cim-parent-label {
+  font-weight: 600;
+  color: #0078d4;
+  white-space: nowrap;
+}
+
+.cim-parent-value {
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cim-form {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.cim-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cim-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.cim-required {
+  color: #c8000b;
+  margin-left: 2px;
+}
+
+.cim-field input,
+.cim-field select,
+.cim-field textarea {
+  padding: 7px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #111;
+  outline: none;
+  transition: border-color 0.15s;
+  background: white;
+}
+
+.cim-field input:focus,
+.cim-field select:focus,
+.cim-field textarea:focus {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.15);
+}
+
+.cim-field textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.cim-error {
+  background: #fde7e9;
+  color: #c8000b;
+  border: 1px solid #f9b0b7;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.cim-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.cim-btn {
+  padding: 7px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background 0.12s;
+}
+
+.cim-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cim-btn--cancel {
+  background: #f4f4f4;
+  border: 1px solid #ccc;
+  color: #333;
+}
+
+.cim-btn--cancel:hover:not(:disabled) {
+  background: #e8e8e8;
+}
+
+.cim-btn--submit {
+  background: #0078d4;
+  color: white;
+}
+
+.cim-btn--submit:hover:not(:disabled) {
+  background: #106ebe;
+}
+
+.cim-field-row {
+  display: flex;
+  gap: 12px;
+}
+.cim-field-row .cim-field {
+  flex: 1;
+}

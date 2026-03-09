@@ -14,7 +14,7 @@ const PARENT_STATE_COLORS = {
   New: '#888',
 }
 
-export default function Board({ data, onTaskStateChange }) {
+export default function Board({ data, onTaskStateChange, onAddTask }) {
   const [collapsedRows, setCollapsedRows] = useState(new Set())
   const [allCollapsed, setAllCollapsed] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
@@ -76,6 +76,11 @@ export default function Board({ data, onTaskStateChange }) {
     return (
       <div className="board-empty">
         No tasks found for the selected sprint and filters.
+        {onAddTask && (
+          <button className="board-empty-add-btn" onClick={() => onAddTask(null)}>
+            ＋ Add Task
+          </button>
+        )}
       </div>
     )
   }
@@ -115,11 +120,22 @@ export default function Board({ data, onTaskStateChange }) {
               >
                 {isCollapsed ? '▶' : '▼'}
               </button>
-              <ParentCard
-                parent={group.parent}
-                parentId={group.parentId}
-                tasks={group.tasks}
-              />
+              <div className="board-parent-cell-inner">
+                <ParentCard
+                  parent={group.parent}
+                  parentId={group.parentId}
+                  tasks={group.tasks}
+                />
+                {onAddTask && group.parent && (
+                  <button
+                    className="add-task-btn"
+                    onClick={() => onAddTask(group.parent)}
+                    title="Add task"
+                  >
+                    ＋ Add Task
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Task state columns */}

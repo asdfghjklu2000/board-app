@@ -63,6 +63,37 @@ app.post('/api/validate', async (req, res) => {
   }
 });
 
+// GET /api/fields/:fieldName/allowed-values — fetch picklist options for a custom field
+// Uses the org-level fields API to get the picklistId, then fetches the picklist items
+app.get('/api/fields/:fieldName/allowed-values', async (req, res) => {
+  try {
+    const { org, auth } = getCredentials(req);
+    const { fieldName } = req.params;
+
+    // Step 1: get field metadata (includes picklistId for custom picklist fields)
+    const fieldData = await adoGet(
+      `https://dev.azure.com/${org}/_apis/wit/fields/${fieldName}?api-version=7.0`,
+      auth
+    );
+
+    // Step 2: if field has a picklistId, fetch the picklist items
+    if (fieldData.picklistId) {
+      const listData = await adoGet(
+        `https://dev.azure.com/${org}/_apis/work/processes/lists/${fieldData.picklistId}?api-version=7.1-preview.1`,
+        auth
+      );
+      // items are plain strings
+      const values = (listData.items || []).map(i => (typeof i === 'string' ? i : (i.value ?? i.name ?? '')));
+      return res.json({ allowedValues: values });
+    }
+
+    // Fallback: try allowedValues directly on the field object
+    res.json({ allowedValues: fieldData.allowedValues || [] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/iterations
 app.get('/api/iterations', async (req, res) => {
   try {
@@ -203,6 +234,80 @@ app.patch('/api/workitems/:id/state', async (req, res) => {
     }
     const data = await response.json();
     res.json({ id: data.id, state: data.fields['System.State'] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+// POST /api/workitems — create a new work item (backlog or task)
+// Body: { workItemType, title, iterationPath, description, storyPointLevel,
+//         parentId, assignedTo, estimatedHours, remainingWork, startDate, dueDate, requirementSource }
+app.post('/api/workitems', async (req, res) => {
+  try {
+    const { org, auth, base } = getCredentials(req);
+    const {
+      workItemType = 'User Story',
+      title,
+      iterationPath,
+      description,
+      storyPointLevel,
+      parentId,
+      assignedTo,
+      estimatedHours,
+      remainingWork,
+      startDate,
+      dueDate,
+      requirementSource,
+    } = req.body;
+
+    if (!title) return res.status(400).json({ error: 'title is required' });
+
+    const ops = [
+      { op: 'add', path: '/fields/System.Title', value: title },
+    ];
+    if (iterationPath)   ops.push({ op: 'add', path: '/fields/System.IterationPath',                            value: iterationPath });
+    if (description)     ops.push({ op: 'add', path: '/fields/System.Description',                              value: description });
+    if (storyPointLevel) ops.push({ op: 'add', path: '/fields/Custom.StoryPointLevel',                          value: storyPointLevel });
+    if (assignedTo)     ops.push({ op: 'add', path: '/fields/System.AssignedTo',                              value: assignedTo });
+    if (estimatedHours) ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.OriginalEstimate',     value: Number(estimatedHours) });
+    if (remainingWork !== undefined && remainingWork !== null && remainingWork !== '')
+                        ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork',        value: Number(remainingWork) });
+    if (startDate)      ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.StartDate',            value: startDate });
+    if (dueDate)        ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.DueDate',              value: dueDate });
+    if (requirementSource) ops.push({ op: 'add', path: '/fields/Custom.09514dcc-6c6c-49b0-8592-d2fa840c9a8f', value: requirementSource });
+    if (parentId) {
+      ops.push({
+        op: 'add',
+        path: '/relations/-',
+        value: {
+          rel: 'System.LinkTypes.Hierarchy-Reverse',
+          url: `https://dev.azure.com/${org}/_apis/wit/workitems/${parentId}`,
+        },
+      });
+    }
+
+    const encodedType = encodeURIComponent(workItemType);
+    const response = await fetch(
+      `${base}/_apis/wit/workitems/$${encodedType}?api-version=7.0`,
+      {
+        method: 'POST',
+        headers: { Authorization: auth, 'Content-Type': 'application/json-patch+json' },
+        body: JSON.stringify(ops),
+      }
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`ADO ${response.status}: ${text}`);
+    }
+    const data = await response.json();
+    res.status(201).json({
+      id: data.id,
+      title: data.fields['System.Title'],
+      state: data.fields['System.State'],
+      workItemType: data.fields['System.WorkItemType'],
+      iterationPath: data.fields['System.IterationPath'],
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

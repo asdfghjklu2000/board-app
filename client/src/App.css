@@ -129,6 +129,23 @@
   flex-shrink: 0;
 }
 
+.new-backlog-btn {
+  padding: 4px 12px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.new-backlog-btn:hover {
+  background: #106ebe;
+}
+
 .filter-keyword {
   border: none;
   outline: none;

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import Board from './components/Board'
 import LoginPage from './components/LoginPage'
 import MultiSelect from './components/MultiSelect'
+import CreateItemModal from './components/CreateItemModal'
 import './App.css'
 
 export default function App() {
@@ -18,6 +19,8 @@ export default function App() {
   const [keyword, setKeyword] = useState('')
   const [stateFilter, setStateFilter] = useState('all')
   const [updateError, setUpdateError] = useState(null)
+  // modal: null | { mode: 'backlog' | 'task', parent: object | null }
+  const [modal, setModal] = useState(null)
 
   // ── Fetch helper ─────────────────────────────────────────────────────────────
   const adoFetch = useCallback((path, options = {}) => {
@@ -47,6 +50,7 @@ export default function App() {
     setUpdateError(null)
     setKeyword('')
     setStateFilter('all')
+    setModal(null)
   }
 
   // ── Load iterations + team members on login ───────────────────────────────────
@@ -159,6 +163,23 @@ export default function App() {
     }
   }
 
+  // ── Create new work item ─────────────────────────────────────────────────────
+  const handleCreate = async (payload) => {
+    const res = await adoFetch('/api/workitems', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Create failed')
+    // Refresh board to include the new item
+    const params = buildBoardParams(selectedIterationPaths, selectedPersons)
+    adoFetch(`/api/board?${params}`)
+      .then(r => r.json())
+      .then(d => { if (!d.error) setBoardData(d) })
+    return data
+  }
+
   const iterationOptions = useMemo(
     () => iterations.map(it => ({ value: it.id, label: it.name })),
     [iterations]
@@ -218,6 +239,12 @@ export default function App() {
 
       <div className="filter-bar">
         <span className="filter-bar-icon">≡</span>
+        <button
+          className="new-backlog-btn"
+          onClick={() => setModal({ mode: 'backlog', parent: null })}
+        >
+          ＋ New Backlog
+        </button>
         <input
           className="filter-keyword"
           placeholder="Filter by keyword"
@@ -255,9 +282,26 @@ export default function App() {
         )}
         {loading
           ? <div className="loading">⏳ Loading board data…</div>
-          : <Board data={filteredData} onTaskStateChange={handleTaskStateChange} />
+          : <Board
+              data={filteredData}
+              onTaskStateChange={handleTaskStateChange}
+              onAddTask={(parent) => setModal({ mode: 'task', parent })}
+            />
         }
       </main>
+
+      {modal && (
+        <CreateItemModal
+          mode={modal.mode}
+          parent={modal.parent}
+          iterations={iterations}
+          teamMembers={teamMembers}
+          defaultIterationPath={selectedIterationPaths[0] || ''}
+          onClose={() => setModal(null)}
+          onSubmit={handleCreate}
+          adoFetch={adoFetch}
+        />
+      )}
     </div>
   )
 }
