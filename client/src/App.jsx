@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import Board from './components/Board'
 import LoginPage from './components/LoginPage'
+import MultiSelect from './components/MultiSelect'
 import './App.css'
 
 export default function App() {
-  const [credentials, setCredentials] = useState(null) // null = not logged in
+  const [credentials, setCredentials] = useState(null)
 
-  // ── Board state ─────────────────────────────────────────────────────────────
+  // ── Board state ──────────────────────────────────────────────────────────────
   const [iterations, setIterations] = useState([])
-  const [selectedIterationId, setSelectedIterationId] = useState('')
+  const [selectedIterationIds, setSelectedIterationIds] = useState([]) // [] = all
   const [teamMembers, setTeamMembers] = useState([])
-  const [assignedTo, setAssignedTo] = useState('all')
+  const [selectedPersons, setSelectedPersons] = useState([])           // [] = all
   const [boardData, setBoardData] = useState({ tasks: [], parents: {} })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -18,7 +19,7 @@ export default function App() {
   const [stateFilter, setStateFilter] = useState('all')
   const [updateError, setUpdateError] = useState(null)
 
-  // ── Fetch helper — injects credentials headers ───────────────────────────────
+  // ── Fetch helper ─────────────────────────────────────────────────────────────
   const adoFetch = useCallback((path, options = {}) => {
     if (!credentials) return Promise.reject(new Error('Not authenticated'))
     return fetch(path, {
@@ -38,9 +39,9 @@ export default function App() {
   const handleLogout = () => {
     setCredentials(null)
     setIterations([])
-    setSelectedIterationId('')
+    setSelectedIterationIds([])
     setTeamMembers([])
-    setAssignedTo('all')
+    setSelectedPersons([])
     setBoardData({ tasks: [], parents: {} })
     setError(null)
     setUpdateError(null)
@@ -63,32 +64,43 @@ export default function App() {
         })
         setIterations(iters)
         setTeamMembers(memberData.value || [])
+
+        // Default: select the current (active) sprint
         if (iters.length > 0) {
           const now = new Date()
           const current = iters.find(it => {
             if (!it.attributes?.startDate || !it.attributes?.finishDate) return false
             return now >= new Date(it.attributes.startDate) && now <= new Date(it.attributes.finishDate)
           })
-          setSelectedIterationId((current || iters[0]).id)
+          setSelectedIterationIds([(current || iters[0]).id])
         }
       })
       .catch(err => setError(err.message))
   }, [credentials, adoFetch])
 
-  const selectedIteration = useMemo(
-    () => iterations.find(it => it.id === selectedIterationId),
-    [iterations, selectedIterationId]
-  )
+  // ── Derive selected iteration paths ──────────────────────────────────────────
+  const selectedIterationPaths = useMemo(() => {
+    if (selectedIterationIds.length === 0) return iterations.map(it => it.path)
+    return iterations
+      .filter(it => selectedIterationIds.includes(it.id))
+      .map(it => it.path)
+  }, [selectedIterationIds, iterations])
 
-  // ── Load board data when sprint or assignee filter changes ────────────────────
+  // ── Build board query params ──────────────────────────────────────────────────
+  const buildBoardParams = useCallback((iterPaths, persons) => {
+    const params = new URLSearchParams()
+    iterPaths.forEach(p => params.append('iterationPath', p))
+    persons.forEach(p => params.append('assignedTo', p))
+    return params
+  }, [])
+
+  // ── Load board data ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!selectedIteration) return
+    if (!credentials || selectedIterationPaths.length === 0) return
     setLoading(true)
     setError(null)
 
-    const params = new URLSearchParams({ iterationPath: selectedIteration.path })
-    if (assignedTo !== 'all') params.set('assignedTo', assignedTo)
-
+    const params = buildBoardParams(selectedIterationPaths, selectedPersons)
     adoFetch(`/api/board?${params}`)
       .then(r => r.json())
       .then(data => {
@@ -97,7 +109,7 @@ export default function App() {
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
-  }, [selectedIteration, assignedTo, adoFetch])
+  }, [selectedIterationPaths, selectedPersons, credentials, adoFetch, buildBoardParams])
 
   // ── Client-side filtering ─────────────────────────────────────────────────────
   const filteredData = useMemo(() => {
@@ -140,15 +152,25 @@ export default function App() {
     } catch (e) {
       setUpdateError(`Failed to update #${taskId}: ${e.message}`)
       // Rollback
-      if (selectedIteration) {
-        const params = new URLSearchParams({ iterationPath: selectedIteration.path })
-        if (assignedTo !== 'all') params.set('assignedTo', assignedTo)
-        adoFetch(`/api/board?${params}`)
-          .then(r => r.json())
-          .then(d => { if (!d.error) setBoardData(d) })
-      }
+      const params = buildBoardParams(selectedIterationPaths, selectedPersons)
+      adoFetch(`/api/board?${params}`)
+        .then(r => r.json())
+        .then(d => { if (!d.error) setBoardData(d) })
     }
   }
+
+  const iterationOptions = useMemo(
+    () => iterations.map(it => ({ value: it.id, label: it.name })),
+    [iterations]
+  )
+
+  const personOptions = useMemo(
+    () => teamMembers.map(m => ({
+      value: m.identity?.uniqueName,
+      label: m.identity?.displayName,
+    })),
+    [teamMembers]
+  )
 
   const hasFilter = keyword || stateFilter !== 'all'
 
@@ -171,34 +193,25 @@ export default function App() {
         </nav>
 
         <div className="top-controls">
-          <select
-            className="top-select"
-            value={selectedIterationId}
-            onChange={e => setSelectedIterationId(e.target.value)}
-          >
-            {iterations.map(it => (
-              <option key={it.id} value={it.id}>{it.name}</option>
-            ))}
-          </select>
+          <MultiSelect
+            options={iterationOptions}
+            value={selectedIterationIds}
+            onChange={setSelectedIterationIds}
+            placeholder="Sprint"
+            allLabel="All Sprints"
+          />
 
-          <select
-            className="top-select"
-            value={assignedTo}
-            onChange={e => setAssignedTo(e.target.value)}
-          >
-            <option value="all">Person: All</option>
-            {teamMembers.map(m => (
-              <option key={m.identity?.id} value={m.identity?.uniqueName}>
-                {m.identity?.displayName}
-              </option>
-            ))}
-          </select>
+          <MultiSelect
+            options={personOptions}
+            value={selectedPersons}
+            onChange={setSelectedPersons}
+            placeholder="Person"
+            allLabel="All"
+          />
 
           <div className="header-user">
             <span className="header-user-name">{credentials.user}</span>
-            <button className="logout-btn" onClick={handleLogout} title="Sign out">
-              Sign out
-            </button>
+            <button className="logout-btn" onClick={handleLogout}>Sign out</button>
           </div>
         </div>
       </header>
@@ -225,10 +238,7 @@ export default function App() {
           <button
             className="filter-clear-btn"
             onClick={() => { setKeyword(''); setStateFilter('all') }}
-            title="Clear filters"
-          >
-            ✕
-          </button>
+          >✕</button>
         )}
       </div>
 
@@ -251,4 +261,3 @@ export default function App() {
     </div>
   )
 }
-

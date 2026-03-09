@@ -1,0 +1,101 @@
+.ms-wrap {
+  position: relative;
+}
+
+.ms-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+  white-space: nowrap;
+  min-width: 120px;
+  max-width: 220px;
+}
+
+.ms-trigger:hover {
+  border-color: #888;
+}
+
+.ms-trigger--open {
+  border-color: #0078d4;
+  box-shadow: 0 0 0 1px #0078d4;
+}
+
+.ms-trigger-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.ms-trigger-prefix {
+  color: #777;
+}
+
+.ms-trigger-arrow {
+  font-size: 9px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.ms-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  background: white;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ms-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  user-select: none;
+}
+
+.ms-option:hover {
+  background: #f0f6ff;
+}
+
+.ms-option--all {
+  font-weight: 600;
+  color: #0078d4;
+}
+
+.ms-option input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  accent-color: #0078d4;
+  cursor: pointer;
+}
+
+.ms-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-divider {
+  height: 1px;
+  background: #ebebeb;
+  margin: 4px 0;
+}

@@ -93,18 +93,32 @@ app.get('/api/team-members', async (req, res) => {
   }
 });
 
-// GET /api/board?iterationPath=...&assignedTo=...
+// GET /api/board?iterationPath=...&assignedTo=...  (params can be repeated for multi-select)
 app.get('/api/board', async (req, res) => {
   try {
     const { project, auth, base } = getCredentials(req);
-    const { iterationPath, assignedTo } = req.query;
+
+    // Express parses repeated params as array; normalise to always be array
+    const toArray = v => !v ? [] : Array.isArray(v) ? v : [v];
+    const iterationPaths = toArray(req.query.iterationPath);
+    const assignedTos    = toArray(req.query.assignedTo);
+
+    const inList = (arr) => arr.map(v => `'${v.replace(/'/g, "''")}'`).join(', ');
 
     const where = [
       `[System.TeamProject] = '${project}'`,
       `[System.WorkItemType] = 'Task'`,
     ];
-    if (iterationPath) where.push(`[System.IterationPath] = '${iterationPath}'`);
-    if (assignedTo) where.push(`[System.AssignedTo] = '${assignedTo}'`);
+    if (iterationPaths.length === 1) {
+      where.push(`[System.IterationPath] = '${iterationPaths[0].replace(/'/g, "''")}'`);
+    } else if (iterationPaths.length > 1) {
+      where.push(`[System.IterationPath] IN (${inList(iterationPaths)})`);
+    }
+    if (assignedTos.length === 1) {
+      where.push(`[System.AssignedTo] = '${assignedTos[0].replace(/'/g, "''")}'`);
+    } else if (assignedTos.length > 1) {
+      where.push(`[System.AssignedTo] IN (${inList(assignedTos)})`);
+    }
 
     const wiql = await adoPost(
       `${base}/_apis/wit/wiql?api-version=7.0`,
