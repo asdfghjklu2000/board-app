@@ -136,44 +136,64 @@ app.get('/api/board', async (req, res) => {
 
     const inList = (arr) => arr.map(v => `'${v.replace(/'/g, "''")}'`).join(', ');
 
-    const where = [
+    const iterationClause = iterationPaths.length === 1
+      ? `AND [System.IterationPath] = '${iterationPaths[0].replace(/'/g, "''")}'`
+      : iterationPaths.length > 1
+        ? `AND [System.IterationPath] IN (${inList(iterationPaths)})`
+        : '';
+
+    const assignedClause = assignedTos.length === 1
+      ? `AND [System.AssignedTo] = '${assignedTos[0].replace(/'/g, "''")}'`
+      : assignedTos.length > 1
+        ? `AND [System.AssignedTo] IN (${inList(assignedTos)})`
+        : '';
+
+    // Step 1: fetch backlog items (User Story / PBI / Feature / Bug) matching the sprint filter
+    const parentWiql = await adoPost(
+      `${base}/_apis/wit/wiql?api-version=7.0`,
+      {
+        query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${project}'
+          AND [System.WorkItemType] IN ('User Story','Product Backlog Item','Feature','Bug')
+          ${iterationClause}
+          ${assignedClause}
+          ORDER BY [System.Id] DESC`,
+      },
+      auth
+    );
+    const parentIds = (parentWiql.workItems || []).map(w => w.id);
+
+    // Step 2: fetch tasks — apply assignedTo filter here; no iteration filter (tasks inherit from parent)
+    const taskWhere = [
       `[System.TeamProject] = '${project}'`,
       `[System.WorkItemType] = 'Task'`,
     ];
     if (iterationPaths.length === 1) {
-      where.push(`[System.IterationPath] = '${iterationPaths[0].replace(/'/g, "''")}'`);
+      taskWhere.push(`[System.IterationPath] = '${iterationPaths[0].replace(/'/g, "''")}'`);
     } else if (iterationPaths.length > 1) {
-      where.push(`[System.IterationPath] IN (${inList(iterationPaths)})`);
+      taskWhere.push(`[System.IterationPath] IN (${inList(iterationPaths)})`);
     }
     if (assignedTos.length === 1) {
-      where.push(`[System.AssignedTo] = '${assignedTos[0].replace(/'/g, "''")}'`);
+      taskWhere.push(`[System.AssignedTo] = '${assignedTos[0].replace(/'/g, "''")}'`);
     } else if (assignedTos.length > 1) {
-      where.push(`[System.AssignedTo] IN (${inList(assignedTos)})`);
+      taskWhere.push(`[System.AssignedTo] IN (${inList(assignedTos)})`);
     }
 
-    const wiql = await adoPost(
+    const taskWiql = await adoPost(
       `${base}/_apis/wit/wiql?api-version=7.0`,
-      { query: `SELECT [System.Id] FROM WorkItems WHERE ${where.join(' AND ')} ORDER BY [System.Id] DESC` },
+      { query: `SELECT [System.Id] FROM WorkItems WHERE ${taskWhere.join(' AND ')} ORDER BY [System.Id] DESC` },
       auth
     );
+    const taskIds = (taskWiql.workItems || []).map(w => w.id);
 
-    const taskIds = (wiql.workItems || []).map(w => w.id);
-    const rawTasks = await fetchWorkItems(taskIds, auth, base, 'relations');
+    // Fetch both in parallel
+    const [rawParentItems, rawTasks] = await Promise.all([
+      fetchWorkItems(parentIds, auth, base),
+      fetchWorkItems(taskIds, auth, base, 'relations'),
+    ]);
 
-    const parentIds = [
-      ...new Set(
-        rawTasks.flatMap(t =>
-          (t.relations || [])
-            .filter(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse')
-            .map(r => parseInt(r.url.split('/').pop()))
-        )
-      ),
-    ];
-
-    const rawParents = await fetchWorkItems(parentIds, auth, base);
-
+    // Build parents map from the dedicated backlog query
     const parents = {};
-    rawParents.forEach(p => {
+    rawParentItems.forEach(p => {
       parents[p.id] = {
         id: p.id,
         title: p.fields['System.Title'] || '',
@@ -181,9 +201,41 @@ app.get('/api/board', async (req, res) => {
         assignedTo: p.fields['System.AssignedTo']?.displayName || '',
         estimatedHours: p.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
         storyPoints: p.fields['Microsoft.VSTS.Scheduling.StoryPoints'] || null,
+        storyPointLevel: p.fields['Custom.StoryPointLevel'] || null,
+        startDate: p.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
+        dueDate: p.fields['Microsoft.VSTS.Scheduling.DueDate'] || null,
         workItemType: p.fields['System.WorkItemType'] || '',
       };
     });
+
+    // Also ensure any task's parent (potentially outside the sprint) is included
+    const extraParentIds = [
+      ...new Set(
+        rawTasks.flatMap(t =>
+          (t.relations || [])
+            .filter(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse')
+            .map(r => parseInt(r.url.split('/').pop()))
+            .filter(id => !parents[id])
+        )
+      ),
+    ];
+    if (extraParentIds.length) {
+      const extraRaw = await fetchWorkItems(extraParentIds, auth, base);
+      extraRaw.forEach(p => {
+        parents[p.id] = {
+          id: p.id,
+          title: p.fields['System.Title'] || '',
+          state: p.fields['System.State'] || '',
+          assignedTo: p.fields['System.AssignedTo']?.displayName || '',
+          estimatedHours: p.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
+          storyPoints: p.fields['Microsoft.VSTS.Scheduling.StoryPoints'] || null,
+          storyPointLevel: p.fields['Custom.StoryPointLevel'] || null,
+          startDate: p.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
+          dueDate: p.fields['Microsoft.VSTS.Scheduling.DueDate'] || null,
+          workItemType: p.fields['System.WorkItemType'] || '',
+        };
+      });
+    }
 
     const tasks = rawTasks.map(t => {
       const parentRel = (t.relations || []).find(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse');

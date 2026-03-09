@@ -38,7 +38,7 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
     onTaskStateChange(draggingId, targetState)
   }
 
-  // Group tasks by parent, sort by parent ID
+  // Group tasks by parent, then include parents that have no tasks
   const groups = useMemo(() => {
     const map = new Map()
     data.tasks.forEach(task => {
@@ -46,6 +46,12 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(task)
     })
+
+    // Ensure every parent from the API appears as a row, even with 0 tasks
+    Object.values(data.parents || {}).forEach(p => {
+      if (!map.has(p.id)) map.set(p.id, [])
+    })
+
     return [...map.entries()]
       .map(([parentId, tasks]) => ({
         parentId: parentId || null,
@@ -72,7 +78,7 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
     })
   }
 
-  if (!data.tasks.length) {
+  if (!data.tasks.length && !Object.keys(data.parents || {}).length) {
     return (
       <div className="board-empty">
         No tasks found for the selected sprint and filters.
