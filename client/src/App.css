@@ -1,0 +1,191 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #f4f4f4;
+}
+
+/* ── Header ── */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  height: 48px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+}
+
+.app-title-icon {
+  font-size: 16px;
+}
+
+.app-nav {
+  display: flex;
+  height: 100%;
+}
+
+.app-nav-item {
+  padding: 0 14px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  user-select: none;
+}
+
+.app-nav-item:hover {
+  color: #222;
+}
+
+.app-nav-item--active {
+  color: #0078d4;
+  border-bottom-color: #0078d4;
+  font-weight: 600;
+}
+
+.top-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.top-select {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.top-select:hover {
+  border-color: #888;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #e0e0e0;
+}
+
+.header-user-name {
+  font-size: 13px;
+  color: #444;
+  font-weight: 500;
+}
+
+.logout-btn {
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  color: #555;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.logout-btn:hover {
+  background: #fde7e9;
+  border-color: #c8000b;
+  color: #c8000b;
+}
+
+/* ── Filter bar ── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.filter-bar-icon {
+  font-size: 18px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.filter-keyword {
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #333;
+  width: 280px;
+  background: transparent;
+}
+
+.filter-keyword::placeholder {
+  color: #999;
+}
+
+.filter-select {
+  padding: 3px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  color: #333;
+}
+
+.filter-clear-btn {
+  padding: 2px 8px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  color: #666;
+}
+
+.filter-clear-btn:hover {
+  background: #f0f0f0;
+}
+
+/* ── Main ── */
+.app-main {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+.error-banner {
+  background: #fde7e9;
+  color: #c8000b;
+  border: 1px solid #f9b0b7;
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+  font-size: 15px;
+}

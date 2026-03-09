@@ -1,0 +1,138 @@
+.board {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  min-width: 860px;
+}
+
+/* ── Column headers ── */
+.board-header {
+  display: grid;
+  grid-template-columns: 240px 1fr 1fr 1fr;
+  background: #f8f8f8;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: -12px;
+  z-index: 20;
+}
+
+.board-header-left {
+  padding: 8px 10px;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+}
+
+.collapse-all-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #0078d4;
+  padding: 4px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.collapse-all-btn:hover {
+  background: #e5f0fb;
+}
+
+.board-col-header {
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  border-right: 1px solid #e0e0e0;
+}
+
+.board-col-header:last-child {
+  border-right: none;
+}
+
+/* ── Data rows ── */
+.board-row {
+  display: grid;
+  grid-template-columns: 240px 1fr 1fr 1fr;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.board-row:last-child {
+  border-bottom: none;
+}
+
+/* Parent (left) cell */
+.board-parent-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 8px 10px 6px;
+  border-right: 1px solid #e0e0e0;
+  background: #fafafa;
+  border-top: 3px solid #0078d4; /* overridden inline per-row */
+}
+
+.row-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  font-size: 9px;
+  padding: 3px 2px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  line-height: 1;
+}
+
+/* Task (state) cells */
+.board-task-cell {
+  padding: 8px;
+  border-right: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 80px;
+}
+
+.board-task-cell:last-child {
+  border-right: none;
+}
+
+.board-task-cell--collapsed {
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+}
+
+.collapsed-badge {
+  font-size: 11px;
+  color: #888;
+  background: #ebebeb;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.board-task-cell--drag-over {
+  background: #e5f0fb;
+  border: 2px dashed #0078d4;
+}
+
+.drop-placeholder {
+  border: 2px dashed #0078d4;
+  border-radius: 3px;
+  padding: 10px;
+  text-align: center;
+  color: #0078d4;
+  font-size: 12px;
+  background: #f0f7ff;
+  margin-top: 2px;
+}
+
+/* Empty state */
+.board-empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: #666;
+  font-size: 15px;
+}
