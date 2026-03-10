@@ -23,11 +23,22 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
   const handleDragStart = (taskId) => setDraggingId(taskId)
   const handleDragEnd = () => { setDraggingId(null); setDropTarget(null) }
 
-  const handleDragOver = (e, state) => {
+  // Use dragenter (fires once on entry) instead of dragover (fires ~60/s) to set drop target
+  const handleDragEnter = (e, state) => {
     e.preventDefault()
     setDropTarget(state)
   }
-  const handleDragLeave = () => setDropTarget(null)
+  // Only fires dragover to keep the drop allowed — no state update here
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+  // Only clear when the cursor truly leaves the cell (not just entering a child element)
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropTarget(null)
+    }
+  }
 
   const handleDrop = (e, targetState) => {
     e.preventDefault()
@@ -153,7 +164,8 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                 <div
                   key={state}
                   className={`board-task-cell ${isCollapsed ? 'board-task-cell--collapsed' : ''} ${isDragOver && !isDraggingSameState ? 'board-task-cell--drag-over' : ''}`}
-                  onDragOver={isCollapsed ? undefined : e => handleDragOver(e, state)}
+                  onDragEnter={isCollapsed ? undefined : e => handleDragEnter(e, state)}
+                  onDragOver={isCollapsed ? undefined : handleDragOver}
                   onDragLeave={isCollapsed ? undefined : handleDragLeave}
                   onDrop={isCollapsed ? undefined : e => handleDrop(e, state)}
                 >

@@ -10,11 +10,18 @@
   text-decoration: none;
   color: inherit;
   transition: box-shadow 0.12s;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .wic--dragging {
   opacity: 0.4;
   cursor: grabbing;
+}
+
+/* Prevent children from intercepting drag events and causing flicker */
+.wic--dragging * {
+  pointer-events: none;
 }
 
 .wic:hover {

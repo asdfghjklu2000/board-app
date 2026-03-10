@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { getAvatarColor, getInitials, formatDate } from '../utils'
 import './WorkItemCard.css'
 
@@ -9,6 +10,8 @@ const STATE_BORDER = {
 export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd }) {
   const borderColor = STATE_BORDER[task.state] || '#0078d4'
   const href = `https://dev.azure.com/laash/LaaS/_workitems/edit/${task.id}`
+  // Track whether a drag just finished so we can suppress the follow-up click
+  const wasDragging = useRef(false)
 
   return (
     <a
@@ -20,12 +23,22 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd })
       draggable
       onDragStart={e => {
         e.dataTransfer.effectAllowed = 'move'
+        wasDragging.current = false
         onDragStart(task.id)
       }}
-      onDragEnd={onDragEnd}
+      onDragEnd={e => {
+        wasDragging.current = true
+        // Clear text selection caused by drag
+        window.getSelection()?.removeAllRanges()
+        onDragEnd(e)
+        // Reset flag after click event that immediately follows dragEnd fires
+        setTimeout(() => { wasDragging.current = false }, 300)
+      }}
       onClick={e => {
-        // Prevent navigation when a drag just ended
-        if (dragging) e.preventDefault()
+        if (wasDragging.current) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
       }}
     >
       <div className="wic-header">
