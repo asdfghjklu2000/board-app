@@ -1,9 +1,14 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve built React frontend (production)
+const clientDist = path.join(__dirname, 'client', 'dist');
+app.use(express.static(clientDist));
 
 const DEFAULT_ORG = 'laash';
 const DEFAULT_PROJECT = 'LaaS';
@@ -365,6 +370,11 @@ app.post('/api/workitems', async (req, res) => {
   }
 });
 
+
+// SPA fallback — serve index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`✅ Board server → http://localhost:${PORT}`));
