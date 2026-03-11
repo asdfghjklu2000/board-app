@@ -71,10 +71,15 @@ export default function App() {
 
         // Default: select the current (active) sprint
         if (iters.length > 0) {
-          const now = new Date()
+          const today = new Date()
+          today.setHours(0, 0, 0, 0)
           const current = iters.find(it => {
             if (!it.attributes?.startDate || !it.attributes?.finishDate) return false
-            return now >= new Date(it.attributes.startDate) && now <= new Date(it.attributes.finishDate)
+            const start = new Date(it.attributes.startDate)
+            start.setHours(0, 0, 0, 0)
+            const finish = new Date(it.attributes.finishDate)
+            finish.setHours(23, 59, 59, 999)
+            return today >= start && today <= finish
           })
           setSelectedIterationIds([(current || iters[0]).id])
         }
