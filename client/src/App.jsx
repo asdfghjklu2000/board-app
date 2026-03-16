@@ -67,7 +67,16 @@ export default function App() {
           return bDate.localeCompare(aDate)
         })
         setIterations(iters)
-        setTeamMembers(memberData.value || [])
+        const members = memberData.value || []
+        setTeamMembers(members)
+
+        // Default: pre-select the logged-in user in Person filter
+        const me = members.find(m =>
+          m.identity?.uniqueName?.toLowerCase() === credentials.user?.toLowerCase()
+        )
+        if (me?.identity?.uniqueName) {
+          setSelectedPersons([me.identity.uniqueName])
+        }
 
         // Default: select the current (active) sprint
         if (iters.length > 0) {
@@ -198,6 +207,14 @@ export default function App() {
     [teamMembers]
   )
 
+  // uniqueName of the logged-in user (for pre-filling Assigned To)
+  const myUniqueName = useMemo(() => {
+    const me = teamMembers.find(m =>
+      m.identity?.uniqueName?.toLowerCase() === credentials?.user?.toLowerCase()
+    )
+    return me?.identity?.uniqueName || ''
+  }, [teamMembers, credentials])
+
   const hasFilter = keyword || stateFilter !== 'all'
 
   // ── Login screen ──────────────────────────────────────────────────────────────
@@ -302,6 +319,7 @@ export default function App() {
           iterations={iterations}
           teamMembers={teamMembers}
           defaultIterationPath={selectedIterationPaths[0] || ''}
+          defaultAssignedTo={myUniqueName}
           onClose={() => setModal(null)}
           onSubmit={handleCreate}
           adoFetch={adoFetch}

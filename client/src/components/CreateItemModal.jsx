@@ -5,7 +5,7 @@ import './CreateItemModal.css'
 const BACKLOG_TYPES = ['User Story', 'Product Backlog Item', 'Feature', 'Bug']
 
 // mode: 'backlog' | 'task'
-export default function CreateItemModal({ mode, iterations, teamMembers, defaultIterationPath, parent, onClose, onSubmit, adoFetch }) {
+export default function CreateItemModal({ mode, iterations, teamMembers, defaultIterationPath, defaultAssignedTo, parent, onClose, onSubmit, adoFetch }) {
   const isTask = mode === 'task'
   const title = isTask ? `New Task${parent ? ` under #${parent.id}` : ''}` : 'New Backlog Item'
 
@@ -15,7 +15,7 @@ export default function CreateItemModal({ mode, iterations, teamMembers, default
     iterationPath: defaultIterationPath || '',
     description: '',
     storyPoints: '',
-    assignedTo: '',
+    assignedTo: defaultAssignedTo || '',
     estimatedHours: '',
     remainingWork: '',
     startDate: '',
