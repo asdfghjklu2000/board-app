@@ -206,3 +206,62 @@
   color: #666;
   font-size: 15px;
 }
+
+/* ── Mobile responsive ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Header: 2-line layout */
+  .app-header {
+    height: auto;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .app-title {
+    font-size: 14px;
+  }
+
+  .app-nav {
+    display: none; /* hide desktop nav tabs */
+  }
+
+  .top-controls {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .header-user-name {
+    display: none; /* show only logout button */
+  }
+
+  /* Filter bar: wrap and scroll */
+  .filter-bar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    overflow-x: auto;
+  }
+
+  .filter-keyword {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 6px 10px;
+    background: white;
+    font-size: 14px;
+    order: 10; /* push to second line */
+  }
+
+  .new-backlog-btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  /* Main: remove padding, fill full width */
+  .app-main {
+    padding: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

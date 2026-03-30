@@ -179,3 +179,136 @@
   color: #666;
   font-size: 15px;
 }
+
+/* ── Mobile layout ────────────────────────────────────────────────────────── */
+.board--mobile {
+  min-width: unset;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.mobile-tabs {
+  display: flex;
+  background: white;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.mobile-tab {
+  flex: 1;
+  padding: 12px 6px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.mobile-tab--active {
+  color: #0078d4;
+  border-bottom-color: #0078d4;
+}
+
+.mobile-tab-badge {
+  background: #0078d4;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  padding: 1px 6px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.mobile-tab--active .mobile-tab-badge {
+  background: #0078d4;
+}
+
+.mobile-tab:not(.mobile-tab--active) .mobile-tab-badge {
+  background: #888;
+}
+
+.mobile-group {
+  background: white;
+  border-top: 3px solid #888;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 8px;
+  border-radius: 0 0 4px 4px;
+}
+
+.mobile-group-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fafafa;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.mobile-group-toggle {
+  font-size: 10px;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.mobile-group-title {
+  flex: 1;
+  font-weight: 600;
+  color: #1a1a1a;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-group-count {
+  font-size: 11px;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.mobile-group-tasks {
+  padding: 8px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-group-empty {
+  text-align: center;
+  color: #aaa;
+  font-size: 12px;
+  padding: 16px 0;
+}
+
+.mobile-add-task-btn {
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: 1px dashed #bbb;
+  border-radius: 4px;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.mobile-add-task-btn:hover,
+.mobile-add-task-btn:active {
+  border-color: #0078d4;
+  color: #0078d4;
+}

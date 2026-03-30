@@ -102,3 +102,64 @@
   font-weight: 500;
   color: #333;
 }
+
+/* Link icon inside header (desktop + mobile) */
+.wic-link {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #aaa;
+  text-decoration: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color 0.12s, background 0.12s;
+}
+
+.wic-link:hover {
+  color: #0078d4;
+  background: #e5f0fb;
+}
+
+/* Mobile: state-change pill buttons */
+.wic-state-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.wic-state-btn {
+  flex: 1;
+  padding: 6px 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  font-size: 11px;
+  color: #555;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  min-width: 0;
+}
+
+.wic-state-btn--active {
+  background: #0078d4;
+  color: white;
+  border-color: #0078d4;
+  font-weight: 600;
+}
+
+.wic-state-btn:not(.wic-state-btn--active):active {
+  background: #e5f0fb;
+  border-color: #0078d4;
+  color: #0078d4;
+}
+
+/* Mobile: card is not draggable, use pointer cursor */
+@media (max-width: 768px) {
+  .wic {
+    cursor: pointer;
+  }
+}

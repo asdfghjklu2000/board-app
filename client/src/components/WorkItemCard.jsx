@@ -2,48 +2,37 @@ import { useRef } from 'react'
 import { getAvatarColor, getInitials, formatDate } from '../utils'
 import './WorkItemCard.css'
 
+const STATES = ['To Do', 'In Progress', 'Done']
+
 const STATE_BORDER = {
   Done: '#ffb900',
   'In Progress': '#5c2d91',
 }
 
-export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd }) {
+const STATE_LABEL = {
+  'To Do': 'To Do',
+  'In Progress': 'In Progress',
+  Done: 'Done',
+}
+
+export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, isMobile, onStateChange }) {
   const borderColor = STATE_BORDER[task.state] || '#0078d4'
   const href = `https://dev.azure.com/laash/LaaS/_workitems/edit/${task.id}`
-  // Track whether a drag just finished so we can suppress the follow-up click
   const wasDragging = useRef(false)
 
-  return (
-    <a
-      className={`wic${dragging ? ' wic--dragging' : ''}`}
-      style={{ borderLeftColor: borderColor }}
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      draggable
-      onDragStart={e => {
-        e.dataTransfer.effectAllowed = 'move'
-        wasDragging.current = false
-        onDragStart(task.id)
-      }}
-      onDragEnd={e => {
-        wasDragging.current = true
-        // Clear text selection caused by drag
-        window.getSelection()?.removeAllRanges()
-        onDragEnd(e)
-        // Reset flag after click event that immediately follows dragEnd fires
-        setTimeout(() => { wasDragging.current = false }, 300)
-      }}
-      onClick={e => {
-        if (wasDragging.current) {
-          e.preventDefault()
-          e.stopPropagation()
-        }
-      }}
-    >
+  const cardBody = (
+    <>
       <div className="wic-header">
         <span className="wic-icon">{task.state === 'Done' ? '✅' : '📋'}</span>
         <span className="wic-title">{task.title}</span>
+        <a
+          className="wic-link"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open in Azure DevOps"
+          onClick={e => e.stopPropagation()}
+        >↗</a>
       </div>
 
       <div className="wic-body">
@@ -88,6 +77,64 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd })
           </div>
         )}
       </div>
+
+      {/* Mobile: state-change buttons */}
+      {isMobile && onStateChange && (
+        <div className="wic-state-btns">
+          {STATES.map(s => (
+            <button
+              key={s}
+              className={`wic-state-btn${task.state === s ? ' wic-state-btn--active' : ''}`}
+              onClick={e => { e.stopPropagation(); if (task.state !== s) onStateChange(s) }}
+            >
+              {STATE_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  )
+
+  // Mobile: plain div (no drag, link is inside header)
+  if (isMobile) {
+    return (
+      <div
+        className="wic"
+        style={{ borderLeftColor: borderColor }}
+      >
+        {cardBody}
+      </div>
+    )
+  }
+
+  // Desktop: draggable anchor
+  return (
+    <a
+      className={`wic${dragging ? ' wic--dragging' : ''}`}
+      style={{ borderLeftColor: borderColor }}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      draggable
+      onDragStart={e => {
+        e.dataTransfer.effectAllowed = 'move'
+        wasDragging.current = false
+        onDragStart(task.id)
+      }}
+      onDragEnd={e => {
+        wasDragging.current = true
+        window.getSelection()?.removeAllRanges()
+        onDragEnd(e)
+        setTimeout(() => { wasDragging.current = false }, 300)
+      }}
+      onClick={e => {
+        if (wasDragging.current) {
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }}
+    >
+      {cardBody}
     </a>
   )
 }

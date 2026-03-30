@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useIsMobile } from '../useIsMobile'
 import WorkItemCard from './WorkItemCard'
 import ParentCard from './ParentCard'
 import './Board.css'
@@ -15,31 +16,27 @@ const PARENT_STATE_COLORS = {
 }
 
 export default function Board({ data, onTaskStateChange, onAddTask }) {
+  const isMobile = useIsMobile()
   const [collapsedRows, setCollapsedRows] = useState(new Set())
   const [allCollapsed, setAllCollapsed] = useState(false)
   const [draggingId, setDraggingId] = useState(null)
-  const [dropTarget, setDropTarget] = useState(null) // { state }
+  const [dropTarget, setDropTarget] = useState(null)
+  const [mobileTab, setMobileTab] = useState('To Do')
 
   const handleDragStart = (taskId) => setDraggingId(taskId)
   const handleDragEnd = () => { setDraggingId(null); setDropTarget(null) }
 
-  // Use dragenter (fires once on entry) instead of dragover (fires ~60/s) to set drop target
   const handleDragEnter = (e, state) => {
     e.preventDefault()
     setDropTarget(state)
   }
-  // Only fires dragover to keep the drop allowed — no state update here
   const handleDragOver = (e) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }
-  // Only clear when the cursor truly leaves the cell (not just entering a child element)
   const handleDragLeave = (e) => {
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setDropTarget(null)
-    }
+    if (!e.currentTarget.contains(e.relatedTarget)) setDropTarget(null)
   }
-
   const handleDrop = (e, targetState) => {
     e.preventDefault()
     setDropTarget(null)
@@ -49,7 +46,6 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
     onTaskStateChange(draggingId, targetState)
   }
 
-  // Group tasks by parent, then include parents that have no tasks
   const groups = useMemo(() => {
     const map = new Map()
     data.tasks.forEach(task => {
@@ -57,12 +53,9 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(task)
     })
-
-    // Ensure every parent from the API appears as a row, even with 0 tasks
     Object.values(data.parents || {}).forEach(p => {
       if (!map.has(p.id)) map.set(p.id, [])
     })
-
     return [...map.entries()]
       .map(([parentId, tasks]) => ({
         parentId: parentId || null,
@@ -89,7 +82,9 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
     })
   }
 
-  if (!data.tasks.length && !Object.keys(data.parents || {}).length) {
+  const isEmpty = !data.tasks.length && !Object.keys(data.parents || {}).length
+
+  if (isEmpty) {
     return (
       <div className="board-empty">
         No tasks found for the selected sprint and filters.
@@ -102,9 +97,85 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
     )
   }
 
+  // ── Mobile layout ─────────────────────────────────────────────────────────
+  if (isMobile) {
+    const tabCounts = Object.fromEntries(
+      STATES.map(s => [s, data.tasks.filter(t => t.state === s).length])
+    )
+    return (
+      <div className="board board--mobile">
+        {/* State tabs */}
+        <div className="mobile-tabs">
+          {STATES.map(s => (
+            <button
+              key={s}
+              className={`mobile-tab${mobileTab === s ? ' mobile-tab--active' : ''}`}
+              onClick={() => setMobileTab(s)}
+            >
+              {s}
+              {tabCounts[s] > 0 && <span className="mobile-tab-badge">{tabCounts[s]}</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Groups */}
+        {groups.map(group => {
+          const rowKey = group.parentId ?? 0
+          const isCollapsed = collapsedRows.has(rowKey)
+          const tabTasks = group.tasks.filter(t => t.state === mobileTab)
+          const borderColor = PARENT_STATE_COLORS[group.parent?.state] || '#888'
+
+          return (
+            <div key={rowKey} className="mobile-group" style={{ borderTopColor: borderColor }}>
+              {/* Group header */}
+              <button
+                className="mobile-group-header"
+                onClick={() => toggleRow(rowKey)}
+              >
+                <span className="mobile-group-toggle">{isCollapsed ? '▶' : '▼'}</span>
+                <span className="mobile-group-title">
+                  {group.parent
+                    ? `#${group.parent.id} ${group.parent.title}`
+                    : 'No Parent'}
+                </span>
+                <span className="mobile-group-count">{group.tasks.length} tasks</span>
+              </button>
+
+              {/* Tasks for current tab */}
+              {!isCollapsed && (
+                <div className="mobile-group-tasks">
+                  {tabTasks.length === 0 ? (
+                    <div className="mobile-group-empty">No {mobileTab} tasks</div>
+                  ) : (
+                    tabTasks.map(task => (
+                      <WorkItemCard
+                        key={task.id}
+                        task={task}
+                        isMobile
+                        onStateChange={(newState) => onTaskStateChange(task.id, newState)}
+                      />
+                    ))
+                  )}
+                  {onAddTask && group.parent && (
+                    <button
+                      className="mobile-add-task-btn"
+                      onClick={() => onAddTask(group.parent)}
+                    >
+                      ＋ Add Task
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // ── Desktop layout ────────────────────────────────────────────────────────
   return (
     <div className="board">
-      {/* Column headers */}
       <div className="board-header">
         <div className="board-header-left">
           <button className="collapse-all-btn" onClick={toggleAll}>
@@ -117,7 +188,6 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
         ))}
       </div>
 
-      {/* Data rows */}
       {groups.map(group => {
         const rowKey = group.parentId ?? 0
         const isCollapsed = collapsedRows.has(rowKey)
@@ -128,7 +198,6 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
 
         return (
           <div key={rowKey} className="board-row">
-            {/* Parent cell */}
             <div className="board-parent-cell" style={{ borderTopColor: borderColor }}>
               <button
                 className="row-toggle-btn"
@@ -147,7 +216,6 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                   <button
                     className="add-task-btn"
                     onClick={() => onAddTask(group.parent)}
-                    title="Add task"
                   >
                     ＋ Add Task
                   </button>
@@ -155,7 +223,6 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
               </div>
             </div>
 
-            {/* Task state columns */}
             {STATES.map(state => {
               const isDragOver = dropTarget === state && draggingId !== null
               const draggingTask = draggingId ? data.tasks.find(t => t.id === draggingId) : null
@@ -185,9 +252,7 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                         />
                       ))}
                       {isDragOver && !isDraggingSameState && (
-                        <div className="drop-placeholder">
-                          Move here → {state}
-                        </div>
+                        <div className="drop-placeholder">Move here → {state}</div>
                       )}
                     </>
                   )}
