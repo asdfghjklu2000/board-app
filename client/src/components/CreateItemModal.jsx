@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react'
+import { marked } from 'marked'
+import { useIsMobile } from '../useIsMobile'
 import Modal from './Modal'
 import './CreateItemModal.css'
 
 const BACKLOG_TYPES = ['User Story', 'Product Backlog Item', 'Feature', 'Bug']
+const DEFAULT_AREA = 'LaaS\\LaaS Dev Team'
 
 // mode: 'backlog' | 'task'
 export default function CreateItemModal({ mode, iterations, teamMembers, defaultIterationPath, defaultAssignedTo, parent, onClose, onSubmit, adoFetch }) {
   const isTask = mode === 'task'
+  const isMobile = useIsMobile()
   const title = isTask ? `New Task${parent ? ` under #${parent.id}` : ''}` : 'New Backlog Item'
 
   const [form, setForm] = useState({
     workItemType: isTask ? 'Task' : 'User Story',
     title: '',
     iterationPath: defaultIterationPath || '',
+    areaPath: DEFAULT_AREA,
     description: '',
+    descMode: isMobile ? 'markdown' : 'html',
     storyPoints: '',
     assignedTo: defaultAssignedTo || '',
     estimatedHours: '',
@@ -23,10 +29,11 @@ export default function CreateItemModal({ mode, iterations, teamMembers, default
     requirementSource: '',
   })
   const [spLevelOptions, setSpLevelOptions] = useState([])
+  const [areaOptions, setAreaOptions] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
-  // Fetch Story Point Level options once when backlog modal opens
+  // Fetch Story Point Level options (backlog only)
   useEffect(() => {
     if (isTask || !adoFetch) return
     adoFetch('/api/fields/Custom.StoryPointLevel/allowed-values')
@@ -35,7 +42,17 @@ export default function CreateItemModal({ mode, iterations, teamMembers, default
       .catch(() => setSpLevelOptions([]))
   }, [isTask])
 
+  // Fetch Area options
+  useEffect(() => {
+    if (!adoFetch) return
+    adoFetch('/api/areas')
+      .then(r => r.json())
+      .then(data => setAreaOptions(data.areas || []))
+      .catch(() => setAreaOptions([]))
+  }, [])
+
   const set = (key) => (e) => setForm(prev => ({ ...prev, [key]: e.target.value }))
+  const setDescMode = (mode) => setForm(prev => ({ ...prev, descMode: mode }))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -47,11 +64,17 @@ export default function CreateItemModal({ mode, iterations, teamMembers, default
     setSubmitting(true)
     setError(null)
     try {
+      // Convert markdown to HTML if needed
+      let description = form.description.trim() || undefined
+      if (description && form.descMode === 'markdown') {
+        description = marked.parse(description)
+      }
       await onSubmit({
         workItemType: form.workItemType,
         title: form.title.trim(),
         iterationPath: form.iterationPath || undefined,
-        description: form.description.trim() || undefined,
+        areaPath: form.areaPath || undefined,
+        description,
         storyPointLevel: form.storyPoints || undefined,
         assignedTo: form.assignedTo || undefined,
         estimatedHours: form.estimatedHours ? Number(form.estimatedHours) : undefined,
@@ -108,6 +131,19 @@ export default function CreateItemModal({ mode, iterations, teamMembers, default
             <option value="">— None —</option>
             {iterations.map(it => (
               <option key={it.id} value={it.path}>{it.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Area */}
+        <div className="cim-field">
+          <label>Area</label>
+          <select value={form.areaPath} onChange={set('areaPath')}>
+            {areaOptions.length === 0 && (
+              <option value={DEFAULT_AREA}>{DEFAULT_AREA}</option>
+            )}
+            {areaOptions.map(a => (
+              <option key={a.id} value={a.path}>{a.path}</option>
             ))}
           </select>
         </div>
@@ -200,15 +236,42 @@ export default function CreateItemModal({ mode, iterations, teamMembers, default
           </div>
         )}
 
-        {/* Description */}
+        {/* Description with HTML/Markdown toggle */}
         <div className="cim-field">
-          <label>Description</label>
+          <div className="cim-desc-header">
+            <label>Description</label>
+            <div className="cim-desc-mode-toggle">
+              <button
+                type="button"
+                className={`cim-mode-btn${form.descMode === 'html' ? ' cim-mode-btn--active' : ''}`}
+                onClick={() => setDescMode('html')}
+              >HTML</button>
+              <button
+                type="button"
+                className={`cim-mode-btn${form.descMode === 'markdown' ? ' cim-mode-btn--active' : ''}`}
+                onClick={() => setDescMode('markdown')}
+              >Markdown</button>
+            </div>
+          </div>
           <textarea
             value={form.description}
             onChange={set('description')}
-            rows={3}
-            placeholder="Optional description…"
+            rows={5}
+            placeholder={form.descMode === 'markdown'
+              ? '支援 Markdown 格式，例如 **粗體**、`程式碼`…'
+              : '支援 HTML 格式，例如 <b>粗體</b>、<ul><li>項目</li></ul>…'}
+            className="cim-desc-textarea"
+            spellCheck={false}
           />
+          {form.descMode === 'markdown' && form.description.trim() && (
+            <details className="cim-preview">
+              <summary>預覽</summary>
+              <div
+                className="cim-preview-body"
+                dangerouslySetInnerHTML={{ __html: marked.parse(form.description) }}
+              />
+            </details>
+          )}
         </div>
 
         {error && <div className="cim-error">⚠️ {error}</div>}

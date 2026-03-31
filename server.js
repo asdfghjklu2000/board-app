@@ -99,6 +99,30 @@ app.get('/api/fields/:fieldName/allowed-values', async (req, res) => {
   }
 });
 
+// GET /api/areas — fetch area classification nodes (flattened list)
+app.get('/api/areas', async (req, res) => {
+  try {
+    const { project, auth, base } = getCredentials(req);
+    const data = await adoGet(
+      `${base}/_apis/wit/classificationnodes/areas?$depth=10&api-version=7.0`,
+      auth
+    );
+    // Flatten tree into [{name, path}]
+    // ADO path: \ProjectName\Area\Sub  →  areaPath: ProjectName\Sub
+    function flatten(node) {
+      const prefix = `\\${project}\\Area`;
+      const suffix = node.path.substring(prefix.length); // '' or '\SubArea'
+      const areaPath = project + suffix;
+      const result = [{ id: node.id, name: node.name, path: areaPath }];
+      if (node.children) node.children.forEach(c => result.push(...flatten(c)));
+      return result;
+    }
+    res.json({ areas: flatten(data) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/iterations
 app.get('/api/iterations', async (req, res) => {
   try {
@@ -307,6 +331,7 @@ app.post('/api/workitems', async (req, res) => {
       workItemType = 'User Story',
       title,
       iterationPath,
+      areaPath,
       description,
       storyPointLevel,
       parentId,
@@ -324,6 +349,7 @@ app.post('/api/workitems', async (req, res) => {
       { op: 'add', path: '/fields/System.Title', value: title },
     ];
     if (iterationPath)   ops.push({ op: 'add', path: '/fields/System.IterationPath',                            value: iterationPath });
+    if (areaPath)        ops.push({ op: 'add', path: '/fields/System.AreaPath',                                value: areaPath });
     if (description)     ops.push({ op: 'add', path: '/fields/System.Description',                              value: description });
     if (storyPointLevel) ops.push({ op: 'add', path: '/fields/Custom.StoryPointLevel',                          value: storyPointLevel });
     if (assignedTo)     ops.push({ op: 'add', path: '/fields/System.AssignedTo',                              value: assignedTo });

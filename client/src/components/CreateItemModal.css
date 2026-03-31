@@ -129,3 +129,100 @@
 .cim-field-row .cim-field {
   flex: 1;
 }
+
+/* Description mode toggle */
+.cim-desc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.cim-desc-header label {
+  margin-bottom: 0;
+}
+
+.cim-desc-mode-toggle {
+  display: flex;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cim-mode-btn {
+  padding: 3px 10px;
+  background: #f5f5f5;
+  border: none;
+  font-size: 11px;
+  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.cim-mode-btn + .cim-mode-btn {
+  border-left: 1px solid #ddd;
+}
+
+.cim-mode-btn--active {
+  background: #0078d4;
+  color: white;
+}
+
+.cim-desc-textarea {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Markdown preview */
+.cim-preview {
+  margin-top: 6px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cim-preview summary {
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #555;
+  background: #f5f5f5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cim-preview-body {
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+.cim-preview-body h1, .cim-preview-body h2, .cim-preview-body h3 {
+  margin: 8px 0 4px;
+}
+
+.cim-preview-body ul, .cim-preview-body ol {
+  padding-left: 20px;
+}
+
+.cim-preview-body code {
+  background: #f0f0f0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.cim-preview-body pre {
+  background: #f0f0f0;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.cim-preview-body p {
+  margin: 4px 0;
+}
