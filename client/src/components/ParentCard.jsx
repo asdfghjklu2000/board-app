@@ -10,7 +10,7 @@ const STATE_COLORS = {
   New: '#888',
 }
 
-export default function ParentCard({ parent, parentId, tasks }) {
+export default function ParentCard({ parent, parentId, tasks, onEdit }) {
   if (!parent) {
     return (
       <div className="pbc pbc--empty">
@@ -32,6 +32,16 @@ export default function ParentCard({ parent, parentId, tasks }) {
           {parent.id}
         </a>
         <span className="pbc-title" title={parent.title}>{parent.title}</span>
+        <div className="pbc-actions">
+          {onEdit && (
+            <button type="button" className="pbc-action-btn" onClick={onEdit} title="Edit backlog">
+              ✎
+            </button>
+          )}
+          <a className="pbc-link" href={href} target="_blank" rel="noopener noreferrer" title="Open in Azure DevOps">
+            ↗
+          </a>
+        </div>
       </div>
 
       <div className="pbc-state">

@@ -280,6 +280,16 @@
   flex-shrink: 0;
 }
 
+.mobile-group-edit-btn {
+  border: none;
+  background: #eef5fb;
+  color: #0078d4;
+  border-radius: 4px;
+  padding: 4px 7px;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .mobile-group-tasks {
   padding: 8px 12px 12px;
   display: flex;

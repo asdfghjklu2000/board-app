@@ -36,6 +36,14 @@
   margin-bottom: 5px;
 }
 
+.wic-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .wic-icon {
   font-size: 13px;
   flex-shrink: 0;
@@ -105,8 +113,6 @@
 
 /* Link icon inside header (desktop + mobile) */
 .wic-link {
-  margin-left: auto;
-  flex-shrink: 0;
   font-size: 12px;
   color: #aaa;
   text-decoration: none;
@@ -117,6 +123,22 @@
 }
 
 .wic-link:hover {
+  color: #0078d4;
+  background: #e5f0fb;
+}
+
+.wic-action-btn {
+  border: none;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.wic-action-btn:hover {
   color: #0078d4;
   background: #e5f0fb;
 }

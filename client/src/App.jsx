@@ -19,7 +19,7 @@ export default function App() {
   const [keyword, setKeyword] = useState('')
   const [stateFilter, setStateFilter] = useState('all')
   const [updateError, setUpdateError] = useState(null)
-  // modal: null | { mode: 'backlog' | 'task', parent: object | null }
+  // modal: null | { mode: 'backlog' | 'task', action: 'create' | 'edit', parent?: object | null, itemId?: number }
   const [modal, setModal] = useState(null)
 
   // ── Fetch helper ─────────────────────────────────────────────────────────────
@@ -194,6 +194,21 @@ export default function App() {
     return data
   }
 
+  const handleUpdate = async (payload) => {
+    const res = await adoFetch(`/api/workitems/${payload.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Update failed')
+    const params = buildBoardParams(selectedIterationPaths, selectedPersons)
+    adoFetch(`/api/board?${params}`)
+      .then(r => r.json())
+      .then(d => { if (!d.error) setBoardData(d) })
+    return data
+  }
+
   const iterationOptions = useMemo(
     () => iterations.map(it => ({ value: it.id, label: it.name })),
     [iterations]
@@ -261,12 +276,12 @@ export default function App() {
 
       <div className="filter-bar">
         <span className="filter-bar-icon">≡</span>
-        <button
-          className="new-backlog-btn"
-          onClick={() => setModal({ mode: 'backlog', parent: null })}
-        >
-          ＋ New Backlog
-        </button>
+          <button
+            className="new-backlog-btn"
+            onClick={() => setModal({ mode: 'backlog', action: 'create', parent: null })}
+          >
+            ＋ New Backlog
+          </button>
         <input
           className="filter-keyword"
           placeholder="Filter by keyword"
@@ -304,24 +319,28 @@ export default function App() {
         )}
         {loading
           ? <div className="loading">⏳ Loading board data…</div>
-          : <Board
-              data={filteredData}
-              onTaskStateChange={handleTaskStateChange}
-              onAddTask={(parent) => setModal({ mode: 'task', parent })}
-            />
+            : <Board
+               data={filteredData}
+               onTaskStateChange={handleTaskStateChange}
+               onAddTask={(parent) => setModal({ mode: 'task', action: 'create', parent })}
+               onEditTask={(task, parent) => setModal({ mode: 'task', action: 'edit', parent, itemId: task.id })}
+               onEditParent={(parent) => setModal({ mode: 'backlog', action: 'edit', parent: null, itemId: parent.id })}
+             />
         }
       </main>
 
       {modal && (
         <CreateItemModal
           mode={modal.mode}
+          action={modal.action}
+          itemId={modal.itemId}
           parent={modal.parent}
           iterations={iterations}
           teamMembers={teamMembers}
           defaultIterationPath={selectedIterationPaths[0] || ''}
           defaultAssignedTo={myUniqueName}
           onClose={() => setModal(null)}
-          onSubmit={handleCreate}
+          onSubmit={modal.action === 'edit' ? handleUpdate : handleCreate}
           adoFetch={adoFetch}
         />
       )}

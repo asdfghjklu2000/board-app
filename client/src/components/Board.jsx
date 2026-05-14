@@ -15,7 +15,7 @@ const PARENT_STATE_COLORS = {
   New: '#888',
 }
 
-export default function Board({ data, onTaskStateChange, onAddTask }) {
+export default function Board({ data, onTaskStateChange, onAddTask, onEditTask, onEditParent }) {
   const isMobile = useIsMobile()
   const [collapsedRows, setCollapsedRows] = useState(new Set())
   const [allCollapsed, setAllCollapsed] = useState(false)
@@ -139,6 +139,18 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                     : 'No Parent'}
                 </span>
                 <span className="mobile-group-count">{group.tasks.length} tasks</span>
+                {group.parent && onEditParent && (
+                  <button
+                    type="button"
+                    className="mobile-group-edit-btn"
+                    onClick={e => {
+                      e.stopPropagation()
+                      onEditParent(group.parent)
+                    }}
+                  >
+                    ✎
+                  </button>
+                )}
               </button>
 
               {/* Tasks for current tab */}
@@ -147,14 +159,15 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                   {tabTasks.length === 0 ? (
                     <div className="mobile-group-empty">No {mobileTab} tasks</div>
                   ) : (
-                    tabTasks.map(task => (
-                      <WorkItemCard
-                        key={task.id}
-                        task={task}
-                        isMobile
-                        onStateChange={(newState) => onTaskStateChange(task.id, newState)}
-                      />
-                    ))
+                      tabTasks.map(task => (
+                        <WorkItemCard
+                          key={task.id}
+                          task={task}
+                          isMobile
+                          onStateChange={(newState) => onTaskStateChange(task.id, newState)}
+                          onEdit={() => onEditTask?.(task, group.parent)}
+                        />
+                      ))
                   )}
                   {onAddTask && group.parent && (
                     <button
@@ -211,6 +224,7 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                   parent={group.parent}
                   parentId={group.parentId}
                   tasks={group.tasks}
+                  onEdit={group.parent ? () => onEditParent?.(group.parent) : undefined}
                 />
                 {onAddTask && group.parent && (
                   <button
@@ -249,6 +263,7 @@ export default function Board({ data, onTaskStateChange, onAddTask }) {
                           dragging={draggingId === task.id}
                           onDragStart={handleDragStart}
                           onDragEnd={handleDragEnd}
+                          onEdit={() => onEditTask?.(task, group.parent)}
                         />
                       ))}
                       {isDragOver && !isDraggingSameState && (

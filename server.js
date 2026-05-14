@@ -42,6 +42,16 @@ async function adoPost(url, body, auth) {
   return res.json();
 }
 
+async function adoPatch(url, body, auth) {
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { Authorization: auth, 'Content-Type': 'application/json-patch+json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`ADO ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
 async function fetchWorkItems(ids, auth, base, expand) {
   if (!ids.length) return [];
   const expandParam = expand ? `&$expand=${expand}` : '';
@@ -55,6 +65,76 @@ async function fetchWorkItems(ids, auth, base, expand) {
     items.push(...(data.value || []));
   }
   return items;
+}
+
+function mapParentWorkItem(p) {
+  return {
+    id: p.id,
+    title: p.fields['System.Title'] || '',
+    state: p.fields['System.State'] || '',
+    assignedTo: p.fields['System.AssignedTo']?.displayName || '',
+    estimatedHours: p.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
+    storyPoints: p.fields['Microsoft.VSTS.Scheduling.StoryPoints'] || null,
+    storyPointLevel: p.fields['Custom.StoryPointLevel'] || null,
+    startDate: p.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
+    dueDate: p.fields['Microsoft.VSTS.Scheduling.FinishDate'] || p.fields['Microsoft.VSTS.Scheduling.DueDate'] || null,
+    workItemType: p.fields['System.WorkItemType'] || '',
+  };
+}
+
+function mapTaskWorkItem(t) {
+  const parentRel = (t.relations || []).find(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse');
+  const parentId = parentRel ? parseInt(parentRel.url.split('/').pop(), 10) : null;
+  return {
+    id: t.id,
+    title: t.fields['System.Title'] || '',
+    state: t.fields['System.State'] || '',
+    assignedTo: t.fields['System.AssignedTo']?.displayName || '',
+    actualHours: t.fields['Custom.ActualHours'] || 0,
+    estimatedHours: t.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
+    startDate: t.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
+    dueDate: t.fields['Microsoft.VSTS.Scheduling.FinishDate'] || t.fields['Microsoft.VSTS.Scheduling.DueDate'] || null,
+    parentId,
+    tags: t.fields['System.Tags'] || '',
+  };
+}
+
+function hasMeaningfulValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function buildFieldOps(fields, currentFields = {}) {
+  const ops = [];
+  const clearable = new Set([
+    'System.IterationPath',
+    'System.AreaPath',
+    'System.Description',
+    'System.AssignedTo',
+    'Microsoft.VSTS.Scheduling.StartDate',
+    'Microsoft.VSTS.Scheduling.DueDate',
+    'Microsoft.VSTS.Scheduling.RemainingWork',
+    'Microsoft.VSTS.Scheduling.OriginalEstimate',
+    'Custom.StoryPointLevel',
+    'Custom.09514dcc-6c6c-49b0-8592-d2fa840c9a8f',
+  ]);
+
+  Object.entries(fields).forEach(([field, value]) => {
+    if (value === undefined) return;
+    if (field === 'System.Title') {
+      if (!value) throw new Error('title is required');
+      ops.push({ op: 'add', path: `/fields/${field}`, value });
+      return;
+    }
+    if ((value === null || value === '') && clearable.has(field) && hasMeaningfulValue(currentFields[field])) {
+      ops.push({ op: 'remove', path: `/fields/${field}` });
+      return;
+    }
+    if (value !== null && value !== '') {
+      ops.push({ op: 'add', path: `/fields/${field}`, value });
+    }
+  });
+
+  return ops;
 }
 
 // POST /api/validate — test credentials
@@ -223,18 +303,7 @@ app.get('/api/board', async (req, res) => {
     // Build parents map from the dedicated backlog query
     const parents = {};
     rawParentItems.forEach(p => {
-      parents[p.id] = {
-        id: p.id,
-        title: p.fields['System.Title'] || '',
-        state: p.fields['System.State'] || '',
-        assignedTo: p.fields['System.AssignedTo']?.displayName || '',
-        estimatedHours: p.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
-        storyPoints: p.fields['Microsoft.VSTS.Scheduling.StoryPoints'] || null,
-        storyPointLevel: p.fields['Custom.StoryPointLevel'] || null,
-        startDate: p.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
-        dueDate: p.fields['Microsoft.VSTS.Scheduling.DueDate'] || null,
-        workItemType: p.fields['System.WorkItemType'] || '',
-      };
+      parents[p.id] = mapParentWorkItem(p);
     });
 
     // Also ensure any task's parent (potentially outside the sprint) is included
@@ -251,39 +320,51 @@ app.get('/api/board', async (req, res) => {
     if (extraParentIds.length) {
       const extraRaw = await fetchWorkItems(extraParentIds, auth, base);
       extraRaw.forEach(p => {
-        parents[p.id] = {
-          id: p.id,
-          title: p.fields['System.Title'] || '',
-          state: p.fields['System.State'] || '',
-          assignedTo: p.fields['System.AssignedTo']?.displayName || '',
-          estimatedHours: p.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
-          storyPoints: p.fields['Microsoft.VSTS.Scheduling.StoryPoints'] || null,
-          storyPointLevel: p.fields['Custom.StoryPointLevel'] || null,
-          startDate: p.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
-          dueDate: p.fields['Microsoft.VSTS.Scheduling.DueDate'] || null,
-          workItemType: p.fields['System.WorkItemType'] || '',
-        };
+        parents[p.id] = mapParentWorkItem(p);
       });
     }
 
-    const tasks = rawTasks.map(t => {
-      const parentRel = (t.relations || []).find(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse');
-      const parentId = parentRel ? parseInt(parentRel.url.split('/').pop()) : null;
-      return {
-        id: t.id,
-        title: t.fields['System.Title'] || '',
-        state: t.fields['System.State'] || '',
-        assignedTo: t.fields['System.AssignedTo']?.displayName || '',
-        actualHours: t.fields['Custom.ActualHours'] || 0,
-        estimatedHours: t.fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] || 0,
-        startDate: t.fields['Microsoft.VSTS.Scheduling.StartDate'] || null,
-        dueDate: t.fields['Microsoft.VSTS.Scheduling.FinishDate'] || null,
-        parentId,
-        tags: t.fields['System.Tags'] || '',
-      };
-    });
+    const tasks = rawTasks.map(mapTaskWorkItem);
 
     res.json({ tasks, parents });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/workitems/:id — fetch editable fields for a single work item
+app.get('/api/workitems/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { auth, base } = getCredentials(req);
+    const data = await adoGet(
+      `${base}/_apis/wit/workitems/${id}?$expand=relations&api-version=7.0`,
+      auth
+    );
+
+    const fields = data.fields || {};
+    const parentRel = (data.relations || []).find(r => r.rel === 'System.LinkTypes.Hierarchy-Reverse');
+    const parentId = parentRel ? parseInt(parentRel.url.split('/').pop(), 10) : null;
+    const workItemType = fields['System.WorkItemType'] || '';
+    const isTask = workItemType === 'Task';
+
+    res.json({
+      id: data.id,
+      workItemType,
+      title: fields['System.Title'] || '',
+      state: fields['System.State'] || '',
+      iterationPath: fields['System.IterationPath'] || '',
+      areaPath: fields['System.AreaPath'] || '',
+      description: fields['System.Description'] || '',
+      assignedTo: fields['System.AssignedTo']?.uniqueName || '',
+      estimatedHours: fields['Microsoft.VSTS.Scheduling.OriginalEstimate'] ?? '',
+      remainingWork: isTask ? (fields['Microsoft.VSTS.Scheduling.RemainingWork'] ?? '') : '',
+      startDate: fields['Microsoft.VSTS.Scheduling.StartDate'] || '',
+      dueDate: fields['Microsoft.VSTS.Scheduling.DueDate'] || fields['Microsoft.VSTS.Scheduling.FinishDate'] || '',
+      storyPointLevel: fields['Custom.StoryPointLevel'] || '',
+      requirementSource: fields['Custom.09514dcc-6c6c-49b0-8592-d2fa840c9a8f'] || '',
+      parentId,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -297,24 +378,68 @@ app.patch('/api/workitems/:id/state', async (req, res) => {
 
   try {
     const { auth, base } = getCredentials(req);
-    const patchBody = [{ op: 'replace', path: '/fields/System.State', value: state }];
-    const response = await fetch(
+    const data = await adoPatch(
       `${base}/_apis/wit/workitems/${id}?api-version=7.0`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: auth,
-          'Content-Type': 'application/json-patch+json',
-        },
-        body: JSON.stringify(patchBody),
-      }
+      [{ op: 'replace', path: '/fields/System.State', value: state }],
+      auth
     );
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`ADO ${response.status}: ${text}`);
-    }
-    const data = await response.json();
     res.json({ id: data.id, state: data.fields['System.State'] });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PATCH /api/workitems/:id — update an existing work item
+app.patch('/api/workitems/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { auth, base } = getCredentials(req);
+    const {
+      title,
+      iterationPath,
+      areaPath,
+      description,
+      storyPointLevel,
+      assignedTo,
+      estimatedHours,
+      remainingWork,
+      startDate,
+      dueDate,
+      requirementSource,
+    } = req.body;
+
+    const current = await adoGet(
+      `${base}/_apis/wit/workitems/${id}?api-version=7.0`,
+      auth
+    );
+
+    const ops = buildFieldOps({
+      'System.Title': title,
+      'System.IterationPath': iterationPath,
+      'System.AreaPath': areaPath,
+      'System.Description': description,
+      'System.AssignedTo': assignedTo,
+      'Microsoft.VSTS.Scheduling.StartDate': startDate,
+      'Microsoft.VSTS.Scheduling.DueDate': dueDate,
+      'Microsoft.VSTS.Scheduling.OriginalEstimate': estimatedHours,
+      'Microsoft.VSTS.Scheduling.RemainingWork': remainingWork,
+      'Custom.StoryPointLevel': storyPointLevel,
+      'Custom.09514dcc-6c6c-49b0-8592-d2fa840c9a8f': requirementSource,
+    }, current.fields || {});
+
+    const data = await adoPatch(
+      `${base}/_apis/wit/workitems/${id}?api-version=7.0`,
+      ops,
+      auth
+    );
+
+    res.json({
+      id: data.id,
+      title: data.fields['System.Title'],
+      state: data.fields['System.State'],
+      workItemType: data.fields['System.WorkItemType'],
+      iterationPath: data.fields['System.IterationPath'],
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -345,20 +470,19 @@ app.post('/api/workitems', async (req, res) => {
 
     if (!title) return res.status(400).json({ error: 'title is required' });
 
-    const ops = [
-      { op: 'add', path: '/fields/System.Title', value: title },
-    ];
-    if (iterationPath)   ops.push({ op: 'add', path: '/fields/System.IterationPath',                            value: iterationPath });
-    if (areaPath)        ops.push({ op: 'add', path: '/fields/System.AreaPath',                                value: areaPath });
-    if (description)     ops.push({ op: 'add', path: '/fields/System.Description',                              value: description });
-    if (storyPointLevel) ops.push({ op: 'add', path: '/fields/Custom.StoryPointLevel',                          value: storyPointLevel });
-    if (assignedTo)     ops.push({ op: 'add', path: '/fields/System.AssignedTo',                              value: assignedTo });
-    if (estimatedHours) ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.OriginalEstimate',     value: Number(estimatedHours) });
-    if (remainingWork !== undefined && remainingWork !== null && remainingWork !== '')
-                        ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork',        value: Number(remainingWork) });
-    if (startDate)      ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.StartDate',            value: startDate });
-    if (dueDate)        ops.push({ op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.DueDate',              value: dueDate });
-    if (requirementSource) ops.push({ op: 'add', path: '/fields/Custom.09514dcc-6c6c-49b0-8592-d2fa840c9a8f', value: requirementSource });
+    const ops = buildFieldOps({
+      'System.Title': title,
+      'System.IterationPath': iterationPath,
+      'System.AreaPath': areaPath,
+      'System.Description': description,
+      'Custom.StoryPointLevel': storyPointLevel,
+      'System.AssignedTo': assignedTo,
+      'Microsoft.VSTS.Scheduling.OriginalEstimate': estimatedHours !== undefined ? Number(estimatedHours) : undefined,
+      'Microsoft.VSTS.Scheduling.RemainingWork': remainingWork !== undefined && remainingWork !== null && remainingWork !== '' ? Number(remainingWork) : undefined,
+      'Microsoft.VSTS.Scheduling.StartDate': startDate,
+      'Microsoft.VSTS.Scheduling.DueDate': dueDate,
+      'Custom.09514dcc-6c6c-49b0-8592-d2fa840c9a8f': requirementSource,
+    });
     if (parentId) {
       ops.push({
         op: 'add',

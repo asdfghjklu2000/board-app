@@ -15,7 +15,7 @@ const STATE_LABEL = {
   Done: 'Done',
 }
 
-export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, isMobile, onStateChange }) {
+export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, isMobile, onStateChange, onEdit }) {
   const borderColor = STATE_BORDER[task.state] || '#0078d4'
   const href = `https://dev.azure.com/laash/LaaS/_workitems/edit/${task.id}`
   const wasDragging = useRef(false)
@@ -25,14 +25,27 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, i
       <div className="wic-header">
         <span className="wic-icon">{task.state === 'Done' ? '✅' : '📋'}</span>
         <span className="wic-title">{task.title}</span>
-        <a
-          className="wic-link"
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open in Azure DevOps"
-          onClick={e => e.stopPropagation()}
-        >↗</a>
+        <div className="wic-actions">
+          {onEdit && (
+            <button
+              type="button"
+              className="wic-action-btn"
+              title="Edit work item"
+              onClick={e => {
+                e.stopPropagation()
+                onEdit()
+              }}
+            >✎</button>
+          )}
+          <a
+            className="wic-link"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open in Azure DevOps"
+            onClick={e => e.stopPropagation()}
+          >↗</a>
+        </div>
       </div>
 
       <div className="wic-body">
@@ -78,7 +91,6 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, i
         )}
       </div>
 
-      {/* Mobile: state-change buttons */}
       {isMobile && onStateChange && (
         <div className="wic-state-btns">
           {STATES.map(s => (
@@ -95,7 +107,6 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, i
     </>
   )
 
-  // Mobile: plain div (no drag, link is inside header)
   if (isMobile) {
     return (
       <div
@@ -107,14 +118,10 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, i
     )
   }
 
-  // Desktop: draggable anchor
   return (
-    <a
+    <div
       className={`wic${dragging ? ' wic--dragging' : ''}`}
       style={{ borderLeftColor: borderColor }}
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       draggable
       onDragStart={e => {
         e.dataTransfer.effectAllowed = 'move'
@@ -135,6 +142,6 @@ export default function WorkItemCard({ task, dragging, onDragStart, onDragEnd, i
       }}
     >
       {cardBody}
-    </a>
+    </div>
   )
 }

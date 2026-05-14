@@ -29,6 +29,13 @@
   gap: 13px;
 }
 
+.cim-loading {
+  padding: 32px 12px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
 .cim-field {
   display: flex;
   flex-direction: column;
